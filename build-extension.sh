@@ -108,8 +108,10 @@ fix_manifest_version() {
 
 build_extension() {
     log "Building extension..."
-    cp "$CLIENT_DIR/extension-settings.json" "$EXT_DIR/settings/chrome-dev-remote.json"
-    (cd "$EXT_DIR" && make build SETTINGS_FILE=settings/chrome-dev-remote.json)
+    # Copy our dev settings (prod URLs, dev buildType to skip dirty-git check)
+    # into the extension repo, then build with it.
+    cp "$CLIENT_DIR/extension-settings.json" "$EXT_DIR/settings/_local-dev.json"
+    (cd "$EXT_DIR" && make build SETTINGS_FILE=settings/_local-dev.json)
     fix_manifest_version
     echo ""
     log "Done! Reload the extension in Chrome:"

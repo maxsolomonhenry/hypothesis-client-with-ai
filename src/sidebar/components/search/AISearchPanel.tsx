@@ -30,7 +30,7 @@ function AISearchPanel({ claude, api, toastMessenger }: AISearchPanelProps) {
   const filterQuery = store.filterQuery();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const hasSelection = store.hasSelectedAnnotations();
-  const [claudeAPIKey, setReductoAPIKey] = useState('');
+  const [claudeAPIKey, setClaudeAPIKey] = useState('');
 
   const clearSearch = () => {
     store.closeSidebarPanel('aiSearchAnnotations');
@@ -140,16 +140,16 @@ function AISearchPanel({ claude, api, toastMessenger }: AISearchPanelProps) {
               }}
             />
             <Input
-              aria-label="Reducto API key"
+              aria-label="Claude API key"
               classes="text-base touch:text-touch-base"
               data-testid="claude-api-key-input"
               dir="auto"
               name="claude-api-key"
-              placeholder="REDUCTO_API_KEY"
+              placeholder="ANTHROPIC_API_KEY"
               type="password"
               value={claudeAPIKey}
               onInput={(e: Event) =>
-                setReductoAPIKey((e.target as HTMLInputElement).value)
+                setClaudeAPIKey((e.target as HTMLInputElement).value)
               }
             />
           </div>
