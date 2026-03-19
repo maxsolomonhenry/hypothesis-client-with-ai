@@ -22,8 +22,9 @@ export type ClaudeSearchRequest = {
   apiKey: string;
 };
 
+// Match the shape that AISearchPanel expects: answer.result[0].quotes
 export type ClaudeSearchResult = {
-  answer: z.infer<typeof PassagesSchema>;
+  answer: { result: [{ quotes: { text: string }[] }] };
 };
 
 export class ClaudeService {
@@ -38,6 +39,7 @@ export class ClaudeService {
 
   /**
    * Search a document with a free-text query using Claude's native PDF support.
+   * Returns data in the same shape as ReductoService so callers don't need to change.
    */
   async AISearchDocument(
     request: ClaudeSearchRequest,
@@ -86,13 +88,15 @@ export class ClaudeService {
         elapsedMs: Date.now() - startedAt,
       });
 
-      const result = message.parsed_output;
-      if (!result) {
+      const passages = message.parsed_output;
+      if (!passages) {
         throw new Error('Claude returned no structured output');
       }
-      console.log('[ClaudeService] parsed quotes:', result);
+      console.log('[ClaudeService] parsed quotes:', passages);
 
-      return {answer: result};
+      // Wrap in the Reducto-compatible shape: { result: [{ quotes: [...] }] }
+      const quotes = passages.map(p => ({text: p.text}));
+      return {answer: {result: [{quotes}]}};
     } catch (error) {
       console.error('[ClaudeService] Error:', {
         elapsedMs: Date.now() - startedAt,

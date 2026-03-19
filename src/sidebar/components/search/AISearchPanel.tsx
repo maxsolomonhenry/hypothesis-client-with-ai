@@ -36,15 +36,6 @@ function AISearchPanel({ claude, api, toastMessenger }: AISearchPanelProps) {
     store.closeSidebarPanel('aiSearchAnnotations');
   };
 
-//   const firstPDFURI = (candidateURIs: string[]): string | null => {
-//     for (const uri of candidateURIs) {
-//       if (uri.toLowerCase().endsWith('.pdf')) {
-//         return uri;
-//       }
-//     }
-//     return null;
-//   };
-
   async function onAISearch(query: string) {
     try {
     const claudeResult = await claude.AISearchDocument({
@@ -59,13 +50,14 @@ function AISearchPanel({ claude, api, toastMessenger }: AISearchPanelProps) {
     const documentURL = claude.firstPDFURI(store.searchUris());
 
     console.log('userid, groupId, documentURL', userid, groupId, documentURL);
-    
+
     if (!userid || !groupId || !documentURL) {
         toastMessenger.error('Missing user, group, or PDF URL');
         return;
     }
 
-    const quotes = claudeResult.answer;
+    const quotes = ((claudeResult.answer as any).result?.[0]?.quotes ?? []) as
+      Array<{ text?: string }>;
     console.log('quotes', quotes);
 
     const created = [];
@@ -90,13 +82,6 @@ function AISearchPanel({ claude, api, toastMessenger }: AISearchPanelProps) {
       store.addAnnotations(created);
     }
     toastMessenger.success(`Created ${created.length} annotation(s) from AI results.`);
-    // const hypResults = await api.search({
-    //   any: query,            // or use a quote from claudeResult
-    //   uri: pdfURI,
-    //   limit: 20,
-    //   offset: 0,
-    // });
-    // console.log('hypothesisSearchResults', hypResults);
     } catch (error) {
       console.error('Error creating annotations from AI results:', error);
       toastMessenger.error('Failed to create annotations from AI results.');
@@ -125,13 +110,6 @@ function AISearchPanel({ claude, api, toastMessenger }: AISearchPanelProps) {
               disabled={hasSelection}
               query={filterQuery || null}
               onClearSearch={clearSearch}
-              //onSearch={store.setFilterQuery}
-              //onSearch={query => claude.AISearchDocument({ documentURL: 'test', query })} //TODO: replace with actual document URL, check Reducto function call name
-            //   onSearch={query => claude.AISearchDocument({
-            //     query,
-            //     candidateURIs: store.searchUris(),
-            //     apiKey: claudeAPIKey,
-            //   })} 
               onSearch={onAISearch}
               onKeyDown={e => {
                 if (e.key === 'Escape') {
