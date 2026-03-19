@@ -1,0 +1,11 @@
+{
+  "buildType": "dev",
+
+  "apiUrl": "https://hypothes.is/api/",
+  "authDomain": "hypothes.is",
+  "bouncerUrl": "https://hyp.is/",
+  "serviceUrl": "https://hypothes.is/",
+
+  "browserIsChrome": true,
+  "appType": "chrome-extension"
+}

@@ -7,7 +7,7 @@ import FilterControls from './FilterControls';
 import SearchField from './SearchField';
 
 import { withServices } from '../../service-context';
-import type { ReductoService } from '../../services/reducto';
+import type { ClaudeService } from '../../services/claude';
 import type { APIService } from '../../services/api';
 import type { ToastMessengerService } from '../../services/toast-messenger';
 import { sharedPermissions } from '../../helpers/permissions';
@@ -20,17 +20,17 @@ import { sharedPermissions } from '../../helpers/permissions';
 
 type AISearchPanelProps = {
     // injected
-    reducto: ReductoService;
+    claude: ClaudeService;
     api: APIService;
     toastMessenger: ToastMessengerService;
 };
 
-function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
+function AISearchPanel({ claude, api, toastMessenger }: AISearchPanelProps) {
   const store = useSidebarStore();
   const filterQuery = store.filterQuery();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const hasSelection = store.hasSelectedAnnotations();
-  const [reductoAPIKey, setReductoAPIKey] = useState('');
+  const [claudeAPIKey, setReductoAPIKey] = useState('');
 
   const clearSearch = () => {
     store.closeSidebarPanel('aiSearchAnnotations');
@@ -47,16 +47,16 @@ function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
 
   async function onAISearch(query: string) {
     try {
-    const reductoResult = await reducto.AISearchDocument({
+    const claudeResult = await claude.AISearchDocument({
         query,
         candidateURIs: store.searchUris(),
-        apiKey: reductoAPIKey,
+        apiKey: claudeAPIKey,
     });
-    console.log('reductoResult', reductoResult);
+    console.log('claudeResult', claudeResult);
 
     const userid = store.profile().userid;
     const groupId = store.focusedGroupId();
-    const documentURL = reducto.firstPDFURI(store.searchUris());
+    const documentURL = claude.firstPDFURI(store.searchUris());
 
     console.log('userid, groupId, documentURL', userid, groupId, documentURL);
     
@@ -65,8 +65,7 @@ function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
         return;
     }
 
-    const quotes = ((reductoResult.answer as any).result?.[0]?.quotes ?? []) as
-      Array<{ text?: string }>;
+    const quotes = claudeResult.answer;
     console.log('quotes', quotes);
 
     const created = [];
@@ -78,7 +77,7 @@ function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
       const payload = {
         group: groupId,
         uri: documentURL,
-        target: [{ source: documentURL, selector: [{ type: 'TextQuoteSelector', exact: quote.text }] }],
+        target: [{ source: documentURL, selector: [{ type: 'TextQuoteSelector' as const, exact: quote.text }] }],
         text: query,
         tags: ['ai',],
         permissions: sharedPermissions(userid, groupId),
@@ -92,7 +91,7 @@ function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
     }
     toastMessenger.success(`Created ${created.length} annotation(s) from AI results.`);
     // const hypResults = await api.search({
-    //   any: query,            // or use a quote from reductoResult
+    //   any: query,            // or use a quote from claudeResult
     //   uri: pdfURI,
     //   limit: 20,
     //   offset: 0,
@@ -127,11 +126,11 @@ function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
               query={filterQuery || null}
               onClearSearch={clearSearch}
               //onSearch={store.setFilterQuery}
-              //onSearch={query => reducto.AISearchDocument({ documentURL: 'test', query })} //TODO: replace with actual document URL, check Reducto function call name
-            //   onSearch={query => reducto.AISearchDocument({
+              //onSearch={query => claude.AISearchDocument({ documentURL: 'test', query })} //TODO: replace with actual document URL, check Reducto function call name
+            //   onSearch={query => claude.AISearchDocument({
             //     query,
             //     candidateURIs: store.searchUris(),
-            //     apiKey: reductoAPIKey,
+            //     apiKey: claudeAPIKey,
             //   })} 
               onSearch={onAISearch}
               onKeyDown={e => {
@@ -143,12 +142,12 @@ function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
             <Input
               aria-label="Reducto API key"
               classes="text-base touch:text-touch-base"
-              data-testid="reducto-api-key-input"
+              data-testid="claude-api-key-input"
               dir="auto"
-              name="reducto-api-key"
+              name="claude-api-key"
               placeholder="REDUCTO_API_KEY"
               type="password"
-              value={reductoAPIKey}
+              value={claudeAPIKey}
               onInput={(e: Event) =>
                 setReductoAPIKey((e.target as HTMLInputElement).value)
               }
@@ -161,4 +160,4 @@ function AISearchPanel({ reducto, api, toastMessenger }: AISearchPanelProps) {
   );
 }
 
-export default withServices(AISearchPanel, ['reducto', 'api', 'toastMessenger']);
+export default withServices(AISearchPanel, ['claude', 'api', 'toastMessenger']);
