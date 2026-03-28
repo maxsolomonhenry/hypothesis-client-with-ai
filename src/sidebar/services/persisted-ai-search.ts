@@ -13,6 +13,12 @@ export const AI_SEARCH_STORAGE_KEY = 'hypothesis.aiSearch.history';
 export const AI_SEARCH_NEGATIVE_EXAMPLES_KEY =
   'hypothesis.aiSearch.negativeExamples';
 
+export const AI_SEARCH_POSITIVE_EXAMPLES_KEY =
+  'hypothesis.aiSearch.positiveExamples';
+
+export const AI_SEARCH_PENDING_EXAMPLES_KEY =
+  'hypothesis.aiSearch.pendingExamples';
+
 const emptyAiSearch = (): AISearchState => ({
   rows: [],
   schemaTagColors: {},
@@ -125,10 +131,9 @@ type StorageSyncConfig<T> = {
 };
 
 /**
- * Persists `sidebarPanels.aiSearch` and `sidebarPanels.aiSearchNegativeExamples`
- * to `localStorage`, restores on load, and applies updates from other browser
- * tabs via the `storage` event (see `AuthService` for the same pattern for
- * OAuth tokens).
+ * Persists AI search state (rows, negative/positive/pending examples) to
+ * `localStorage`, restores on load, and applies updates from other browser
+ * tabs via the `storage` event.
  *
  * @inject
  */
@@ -205,6 +210,22 @@ export class PersistedAISearchService {
       this._store.hydrateAISearchNegativeExamples(negParsed);
     }
 
+    const posRaw = this._storage.getObject<unknown>(
+      AI_SEARCH_POSITIVE_EXAMPLES_KEY,
+    );
+    const posParsed = parseAISearchNegativeExamplesState(posRaw);
+    if (posParsed) {
+      this._store.hydrateAISearchPositiveExamples(posParsed);
+    }
+
+    const pendRaw = this._storage.getObject<unknown>(
+      AI_SEARCH_PENDING_EXAMPLES_KEY,
+    );
+    const pendParsed = parseAISearchNegativeExamplesState(pendRaw);
+    if (pendParsed) {
+      this._store.hydrateAISearchPendingExamples(pendParsed);
+    }
+
     watch(
       this._store.subscribe,
       () => this._store.getState().sidebarPanels.aiSearch,
@@ -219,6 +240,24 @@ export class PersistedAISearchService {
       () => this._store.getState().sidebarPanels.aiSearchNegativeExamples,
       current => {
         this._storage.setObject(AI_SEARCH_NEGATIVE_EXAMPLES_KEY, current);
+      },
+      (a, b) => JSON.stringify(a) === JSON.stringify(b),
+    );
+
+    watch(
+      this._store.subscribe,
+      () => this._store.getState().sidebarPanels.aiSearchPositiveExamples,
+      current => {
+        this._storage.setObject(AI_SEARCH_POSITIVE_EXAMPLES_KEY, current);
+      },
+      (a, b) => JSON.stringify(a) === JSON.stringify(b),
+    );
+
+    watch(
+      this._store.subscribe,
+      () => this._store.getState().sidebarPanels.aiSearchPendingExamples,
+      current => {
+        this._storage.setObject(AI_SEARCH_PENDING_EXAMPLES_KEY, current);
       },
       (a, b) => JSON.stringify(a) === JSON.stringify(b),
     );
@@ -248,21 +287,53 @@ export class PersistedAISearchService {
         e,
       );
 
+    const syncPositives = (e?: StorageEvent) =>
+      this._syncFromLocalStorage(
+        {
+          storageKey: AI_SEARCH_POSITIVE_EXAMPLES_KEY,
+          parse: parseAISearchNegativeExamplesState,
+          empty: () => [],
+          getCurrent: () =>
+            this._store.getState().sidebarPanels.aiSearchPositiveExamples,
+          hydrate: v => this._store.hydrateAISearchPositiveExamples(v),
+        },
+        e,
+      );
+
+    const syncPending = (e?: StorageEvent) =>
+      this._syncFromLocalStorage(
+        {
+          storageKey: AI_SEARCH_PENDING_EXAMPLES_KEY,
+          parse: parseAISearchNegativeExamplesState,
+          empty: () => [],
+          getCurrent: () =>
+            this._store.getState().sidebarPanels.aiSearchPendingExamples,
+          hydrate: v => this._store.hydrateAISearchPendingExamples(v),
+        },
+        e,
+      );
+
     this._window.addEventListener('storage', (e: StorageEvent) => {
       syncHistory(e);
       syncNegatives(e);
+      syncPositives(e);
+      syncPending(e);
     });
 
     this._window.document.addEventListener('visibilitychange', () => {
       if (this._window.document.visibilityState === 'visible') {
         syncHistory();
         syncNegatives();
+        syncPositives();
+        syncPending();
       }
     });
 
     this._window.addEventListener('focus', () => {
       syncHistory();
       syncNegatives();
+      syncPositives();
+      syncPending();
     });
   }
 }

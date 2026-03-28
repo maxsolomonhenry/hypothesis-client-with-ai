@@ -41,7 +41,6 @@ import type { APIService } from '../../services/api';
 import type { FrameSyncService } from '../../services/frame-sync';
 // import type { ReductoService } from '../../services/reducto';
 import type { ClaudeService } from '../../services/claude';
-import type { ExperimentLogService } from '../../services/experiment-log';
 import type { ToastMessengerService } from '../../services/toast-messenger';
 import { useSidebarStore } from '../../store';
 import type {
@@ -54,7 +53,6 @@ import SearchField from './SearchField';
 
 type AISearchPanelProps = {
   annotationsService: AnnotationsService;
-  experimentLog: ExperimentLogService;
   frameSync: FrameSyncService;
   // reducto: ReductoService;
   claude: ClaudeService;
@@ -64,7 +62,6 @@ type AISearchPanelProps = {
 
 function AISearchPanel({
   annotationsService,
-  experimentLog,
   frameSync,
   // reducto,
   claude,
@@ -190,14 +187,15 @@ function AISearchPanel({
         store.addAISearchRow(row);
       }
 
-      experimentLog.logSearch({
-        query,
-        schemaTag: schemaTagForRow,
-        searchRowId: rowId,
-        documentUri: documentURL,
-        annotationIdsCreated: newIds,
-        quoteTexts: created.map(a => annotationQuote(a) ?? ''),
-      });
+      for (const ann of created) {
+        store.addAISearchPendingExample({
+          id: ann.id ?? crypto.randomUUID(),
+          schemaTag: schemaTagForRow,
+          query,
+          quote: (annotationQuote(ann) ?? '').trim(),
+          documentUri: documentURL,
+        });
+      }
 
       let successMsg = `Created ${created.length} annotation(s) from AI results.`;
       if (skippedDuplicate > 0) {
@@ -255,13 +253,9 @@ function AISearchPanel({
         store.removeAnnotationIdsFromAISearchRows(deletedIds);
       }
 
-      experimentLog.logRerunSearch({
-        searchRowId: row.id,
-        query: row.query,
-        schemaTag: row.schemaTag,
-        documentUri: documentURL,
-        deletedAnnotationIds: deletedIds,
-      });
+      for (const id of deletedIds) {
+        store.removeAISearchPendingExample(id);
+      }
 
       await runAISearch(row.schemaTag, row.query, { replaceRowId: row.id });
     } catch (err) {
@@ -300,13 +294,9 @@ function AISearchPanel({
           { visuallyHidden: true },
         );
       }
-      experimentLog.logDeletePending({
-        searchRowId: row.id,
-        query: row.query,
-        schemaTag: row.schemaTag,
-        documentUri: documentURL,
-        deletedAnnotationIds: deletedIds,
-      });
+      for (const id of deletedIds) {
+        store.removeAISearchPendingExample(id);
+      }
     } catch (err) {
       console.error(err);
       toastMessenger.error('Failed to delete pending annotations.');
@@ -375,14 +365,10 @@ function AISearchPanel({
       }
       store.removeAISearchRow(row.id);
 
-      experimentLog.logDeleteAll({
-        searchRowId: row.id,
-        query: row.query,
-        schemaTag: row.schemaTag,
-        documentUri: documentURL,
-        deletedAnnotationIds: deletedIds,
-        untaggedAnnotationIds: untaggedIds,
-      });
+      for (const id of deletedIds) {
+        store.removeAISearchPendingExample(id);
+        store.removeAISearchPositiveExample(id);
+      }
 
       toastMessenger.success('AI search row removed.', { visuallyHidden: true });
     } catch (err) {
@@ -749,7 +735,23 @@ function AISearchPanel({
               type="button"
               className="text-xs text-color-text-light hover:text-color-text underline"
               title="Download experiment log as JSON"
-              onClick={() => experimentLog.downloadLog()}
+              onClick={() => {
+                const log = {
+                  exportedAt: new Date().toISOString(),
+                  positive: store.aiSearchPositiveExamples(),
+                  negative: store.aiSearchNegativeExamples(),
+                  pending: store.aiSearchPendingExamples(),
+                };
+                const blob = new Blob([JSON.stringify(log, null, 2)], {
+                  type: 'application/json',
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `experiment-log-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
             >
               Download experiment log
             </button>
@@ -765,7 +767,7 @@ function AISearchPanel({
                   confirmAction: 'Clear log',
                 });
                 if (ok) {
-                  experimentLog.clearLog();
+                  store.clearAISearchExamples();
                 }
               }}
             >
@@ -780,7 +782,6 @@ function AISearchPanel({
 
 export default withServices(AISearchPanel, [
   'annotationsService',
-  'experimentLog',
   'frameSync',
   // 'reducto',
   'claude',

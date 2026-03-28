@@ -21,7 +21,6 @@ import {
 import type { SidebarStore } from '../store';
 import type { AnnotationActivityService } from './annotation-activity';
 import type { APIService } from './api';
-import type { ExperimentLogService } from './experiment-log';
 
 export type MentionsOptions =
   | {
@@ -44,20 +43,17 @@ export type MentionsOptions =
 export class AnnotationsService {
   private _activity: AnnotationActivityService;
   private _api: APIService;
-  private _experimentLog: ExperimentLogService;
   private _settings: SidebarSettings;
   private _store: SidebarStore;
 
   constructor(
     annotationActivity: AnnotationActivityService,
     api: APIService,
-    experimentLog: ExperimentLogService,
     settings: SidebarSettings,
     store: SidebarStore,
   ) {
     this._activity = annotationActivity;
     this._api = api;
-    this._experimentLog = experimentLog;
     this._settings = settings;
     this._store = store;
   }
@@ -364,11 +360,15 @@ export class AnnotationsService {
 
       this._store.addAnnotations([savedAnnotation]);
 
-      this._experimentLog.logAccept({
-        annotationId: annotation.id,
-        quoteText: metadata.quote(annotation) ?? '',
-        schemaTag:
-          tags.find(t => t !== 'ai-pending' && t !== 'ai-user-approved') ?? '',
+      const quoteText = metadata.quote(annotation) ?? '';
+      const schemaTag =
+        tags.find(t => t !== 'ai-pending' && t !== 'ai-user-approved') ?? '';
+      this._store.removeAISearchPendingExample(annotation.id);
+      this._store.addAISearchPositiveExample({
+        id: annotation.id,
+        schemaTag,
+        query: (annotation.text ?? '').trim(),
+        quote: quoteText.trim(),
         documentUri: annotation.uri,
       });
 
@@ -376,13 +376,7 @@ export class AnnotationsService {
     }
 
     if (isAiPending && newStatus === 'DENIED') {
-      this._experimentLog.logReject({
-        annotationId: annotation.id,
-        quoteText: metadata.quote(annotation) ?? '',
-        schemaTag:
-          tags.find(t => t !== 'ai-pending' && t !== 'ai-user-approved') ?? '',
-        documentUri: annotation.uri,
-      });
+      this._store.removeAISearchPendingExample(annotation.id);
 
       const id = annotation.id;
       if (id) {

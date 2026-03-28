@@ -56,6 +56,8 @@ export type State = {
    * Persisted separately from `aiSearch`; see `PersistedAISearchService`.
    */
   aiSearchNegativeExamples: AISearchNegativeExample[];
+  aiSearchPositiveExamples: AISearchNegativeExample[];
+  aiSearchPendingExamples: AISearchNegativeExample[];
 };
 
 const initialAiSearch: AISearchState = {
@@ -67,6 +69,8 @@ const initialState: State = {
   activePanelName: null,
   aiSearch: initialAiSearch, //TODO: Rename
   aiSearchNegativeExamples: [],
+  aiSearchPositiveExamples: [],
+  aiSearchPendingExamples: [],
 };
 
 const reducers = {
@@ -278,6 +282,68 @@ const reducers = {
       aiSearchNegativeExamples: action.examples,
     };
   },
+
+  ADD_AI_SEARCH_POSITIVE_EXAMPLE(
+    state: State,
+    action: { example: AISearchNegativeExample },
+  ) {
+    return {
+      aiSearchPositiveExamples: [...state.aiSearchPositiveExamples, action.example],
+    };
+  },
+
+  REMOVE_AI_SEARCH_POSITIVE_EXAMPLE(
+    state: State,
+    action: { exampleId: string },
+  ) {
+    return {
+      aiSearchPositiveExamples: state.aiSearchPositiveExamples.filter(
+        e => e.id !== action.exampleId,
+      ),
+    };
+  },
+
+  HYDRATE_AI_SEARCH_POSITIVE_EXAMPLES(
+    _state: State,
+    action: { examples: AISearchNegativeExample[] },
+  ) {
+    return { aiSearchPositiveExamples: action.examples };
+  },
+
+  ADD_AI_SEARCH_PENDING_EXAMPLE(
+    state: State,
+    action: { example: AISearchNegativeExample },
+  ) {
+    return {
+      aiSearchPendingExamples: [...state.aiSearchPendingExamples, action.example],
+    };
+  },
+
+  REMOVE_AI_SEARCH_PENDING_EXAMPLE(
+    state: State,
+    action: { exampleId: string },
+  ) {
+    return {
+      aiSearchPendingExamples: state.aiSearchPendingExamples.filter(
+        e => e.id !== action.exampleId,
+      ),
+    };
+  },
+
+  HYDRATE_AI_SEARCH_PENDING_EXAMPLES(
+    _state: State,
+    action: { examples: AISearchNegativeExample[] },
+  ) {
+    return { aiSearchPendingExamples: action.examples };
+  },
+
+  CLEAR_AI_SEARCH_EXAMPLES() {
+    return {
+      aiSearchNegativeExamples: [],
+      aiSearchPositiveExamples: [],
+      aiSearchPendingExamples: [],
+    };
+  },
 };
 
 /**
@@ -362,6 +428,34 @@ function hydrateAISearchNegativeExamples(examples: AISearchNegativeExample[]) {
   });
 }
 
+function addAISearchPositiveExample(example: AISearchNegativeExample) {
+  return makeAction(reducers, 'ADD_AI_SEARCH_POSITIVE_EXAMPLE', { example });
+}
+
+function removeAISearchPositiveExample(exampleId: string) {
+  return makeAction(reducers, 'REMOVE_AI_SEARCH_POSITIVE_EXAMPLE', { exampleId });
+}
+
+function hydrateAISearchPositiveExamples(examples: AISearchNegativeExample[]) {
+  return makeAction(reducers, 'HYDRATE_AI_SEARCH_POSITIVE_EXAMPLES', { examples });
+}
+
+function addAISearchPendingExample(example: AISearchNegativeExample) {
+  return makeAction(reducers, 'ADD_AI_SEARCH_PENDING_EXAMPLE', { example });
+}
+
+function removeAISearchPendingExample(exampleId: string) {
+  return makeAction(reducers, 'REMOVE_AI_SEARCH_PENDING_EXAMPLE', { exampleId });
+}
+
+function hydrateAISearchPendingExamples(examples: AISearchNegativeExample[]) {
+  return makeAction(reducers, 'HYDRATE_AI_SEARCH_PENDING_EXAMPLES', { examples });
+}
+
+function clearAISearchExamples() {
+  return makeAction(reducers, 'CLEAR_AI_SEARCH_EXAMPLES', {});
+}
+
 /**
  * Is the panel indicated by `panelName` currently active (open)?
  */
@@ -379,6 +473,14 @@ function aiSearchSchemaTagColors(state: State) {
 
 function aiSearchNegativeExamples(state: State) {
   return state.aiSearchNegativeExamples;
+}
+
+function aiSearchPositiveExamples(state: State) {
+  return state.aiSearchPositiveExamples;
+}
+
+function aiSearchPendingExamples(state: State) {
+  return state.aiSearchPendingExamples;
 }
 
 export const sidebarPanelsModule = createStoreModule(initialState, {
@@ -399,6 +501,13 @@ export const sidebarPanelsModule = createStoreModule(initialState, {
     addAISearchNegativeExample,
     removeAISearchNegativeExample,
     hydrateAISearchNegativeExamples,
+    addAISearchPositiveExample,
+    removeAISearchPositiveExample,
+    hydrateAISearchPositiveExamples,
+    addAISearchPendingExample,
+    removeAISearchPendingExample,
+    hydrateAISearchPendingExamples,
+    clearAISearchExamples,
   },
 
   selectors: {
@@ -406,5 +515,7 @@ export const sidebarPanelsModule = createStoreModule(initialState, {
     aiSearchRows,
     aiSearchSchemaTagColors,
     aiSearchNegativeExamples,
+    aiSearchPositiveExamples,
+    aiSearchPendingExamples,
   },
 });
